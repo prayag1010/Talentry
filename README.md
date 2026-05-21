@@ -1,4 +1,4 @@
-resume-screening-nlp
+Talentry
 AI-powered Resume Screening System using NLP (TF-IDF &amp; Cosine Similarity) to match resumes with job descriptions. Built with Python &amp; Streamlit with an interactive UI.
 
 📄 AI Resume Screening System (NLP)
@@ -6,7 +6,7 @@ An AI-powered Resume Screening System that automates candidate evaluation using 
 
 Demo🔗:- https://resume-screening-nlp.streamlit.app/
 
-🧠 Features
+Features
 - Upload resumes (PDF/DOCX)
 - Automatic text extraction and preprocessing
 - Keyword and skill matching
@@ -14,7 +14,7 @@ Demo🔗:- https://resume-screening-nlp.streamlit.app/
 - NLP-based similarity (TF-IDF, Cosine Similarity)
 - Simple and interactive UI (Streamlit)
 
-🛠️ Tech Stack
+Tech Stack
 - Python  
 - scikit-learn  
 - pandas  
@@ -23,7 +23,7 @@ Demo🔗:- https://resume-screening-nlp.streamlit.app/
 - PyPDF2 / python-docx  
 - Streamlit
 -
-⚙️ Installation & Setup
+Installation & Setup
 
 1. Clone the Repository
 bash
@@ -49,14 +49,14 @@ pip install -r requirements.txt
 bash
 streamlit run app.py
 
-📊 How It Works
+How It Works
 1. Upload resumes  
 2. Enter job description  
 3. NLP processes the text  
 4. Similarity score is calculated  
 5. Candidates are ranked  
 
-📌 Future Improvements
+Future Improvements
 - Deep Learning models (BERT)
 - Dashboard analytics
 - Cloud deployment (AWS/Docker)
@@ -66,8 +66,7 @@ Feel free to fork this repo and submit pull requests.
 
 MIT License
 
-👨‍💻 Author:-
-
+Author:-
 Prayag Rajyaguru
 
 LinkedIn:www.linkedin.com/in/prayag-rajyaguru                                                                                                                  
