@@ -4,12 +4,20 @@ import PyPDF2
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import time
+import os
 
-# ─── NLTK DOWNLOAD (cached, runs once) ────────────────────────────────────────
-@st.cache_resource
+# ─── NLTK DOWNLOAD (runs every startup for cloud compatibility) ───────────────
 def download_nltk_data():
-    nltk.download("stopwords", quiet=True)
-    nltk.download("punkt", quiet=True)
+    """
+    Download required NLTK data. Runs at module level (not cached) so that
+    Streamlit Cloud always has the data after a cold restart.
+    """
+    packages = ["stopwords", "punkt", "punkt_tab"]
+    for pkg in packages:
+        try:
+            nltk.download(pkg, quiet=True)
+        except Exception:
+            pass  # already present or download failed gracefully
 
 download_nltk_data()
 
