@@ -6,6 +6,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 import time
 import os
 import math
+import textwrap
 
 # ─── NLTK DOWNLOAD (runs every startup for cloud compatibility) ───────────────
 def download_nltk_data():
@@ -557,6 +558,14 @@ ALL_SKILLS = [s for cat in SKILL_CATEGORIES.values() for s in cat["skills"]]
 
 # ─── HELPER FUNCTIONS ─────────────────────────────────────────────────────────
 
+def clean_html(html_str: str) -> str:
+    """
+    Cleans leading/trailing whitespace from each line in a multiline HTML string
+    to prevent Markdown parsers from treating indented lines as code blocks.
+    """
+    return "\n".join(line.strip() for line in html_str.split("\n"))
+
+
 def extract_text_from_pdf(file) -> str:
     reader = PyPDF2.PdfReader(file)
     text = ""
@@ -625,7 +634,7 @@ def score_donut_html(score: float, color: str, label: str) -> str:
     r = 80
     circ = 2 * math.pi * r
     offset = circ * (1 - score / 100)
-    return f"""
+    return clean_html(f"""
     <div class="donut-container">
       <svg width="220" height="220" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
         <defs>
@@ -651,7 +660,7 @@ def score_donut_html(score: float, color: str, label: str) -> str:
           font-size="11" font-weight="600" font-family="Inter, sans-serif" opacity="0.8">{label}</text>
       </svg>
     </div>
-    """
+    """)
 
 
 def skill_bar_chart_html(resume_skills: list, jd_skills: list) -> str:
@@ -674,11 +683,11 @@ def skill_bar_chart_html(resume_skills: list, jd_skills: list) -> str:
         </div>"""
     if not rows:
         return ""
-    return f"""
+    return clean_html(f"""
     <div class="bar-chart-container">
       <div class="section-header">📊 Skills Coverage by Category</div>
       {rows}
-    </div>"""
+    </div>""")
 
 
 def recommendations_html(score: float, matched: list, missing: list, jd_skills: list) -> str:
@@ -704,11 +713,11 @@ def recommendations_html(score: float, matched: list, missing: list, jd_skills: 
     tips.append("📝 <strong>ATS tip:</strong> Mirror exact phrasing from the job description to pass automated screening filters.")
 
     items = "".join(f'<div class="rec-item">{t}</div>' for t in tips[:4])
-    return f"""
+    return clean_html(f"""
     <div class="rec-card">
       <div class="rec-title">💡 Recommendations</div>
       {items}
-    </div>"""
+    </div>""")
 
 
 def step_indicator_html(step: int) -> str:
@@ -729,7 +738,7 @@ def step_indicator_html(step: int) -> str:
         if i < len(steps):
             line_cls = "step-line-done" if i < step else ""
             parts.append(f'<div class="step-line {line_cls}"></div>')
-    return f'<div class="step-indicator">{"".join(parts)}</div>'
+    return clean_html(f'<div class="step-indicator">{"".join(parts)}</div>')
 
 
 def file_preview_html(uploaded_file) -> str:
@@ -737,7 +746,7 @@ def file_preview_html(uploaded_file) -> str:
     size = format_file_size(uploaded_file)
     ext = name.split(".")[-1].upper()
     icon = "📄" if ext == "PDF" else "📝"
-    return f"""
+    return clean_html(f"""
     <div class="file-preview-card">
       <div class="file-preview-icon">{icon}</div>
       <div class="file-preview-info">
@@ -745,7 +754,7 @@ def file_preview_html(uploaded_file) -> str:
         <div class="file-preview-meta">{ext} &bull; {size}</div>
       </div>
       <div class="file-preview-check">✅</div>
-    </div>"""
+    </div>""")
 
 
 # ─── HEADER ───────────────────────────────────────────────────────────────────
