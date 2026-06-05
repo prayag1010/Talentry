@@ -4,7 +4,7 @@ AI-powered Resume Screening System using NLP (TF-IDF &amp; Cosine Similarity) to
 📄 AI Resume Screening System (NLP)
 An AI-powered Resume Screening System that automates candidate evaluation using Natural Language Processing (NLP) and Machine Learning. It helps recruiters shortlist candidates based on job descriptions quickly and efficiently.
 
-Demo🔗:- https://resume-screening-nlp.streamlit.app/
+Demo🔗:- https://talentry.streamlit.app/
 
 Features
 - Upload resumes (PDF/DOCX)
