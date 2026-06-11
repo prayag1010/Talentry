@@ -7,6 +7,15 @@ import time
 import os
 import math
 import textwrap
+import json
+
+# Gracefully check for Gemini library availability
+try:
+    import google.generativeai as genai
+    HAS_GEMINI = True
+except ImportError:
+    HAS_GEMINI = False
+
 
 # ─── NLTK DOWNLOAD (runs every startup for cloud compatibility) ───────────────
 def download_nltk_data():
@@ -474,6 +483,17 @@ html, body, [class*="css"] {
     transform: translateY(-2px) !important;
 }
 
+/* ── Centered analyze button row ── */
+.btn-center-row {
+    display: flex;
+    justify-content: center;
+    padding: 0.5rem 0 1rem;
+}
+.btn-center-row > div {
+    width: 320px;
+    max-width: 90%;
+}
+
 /* ── File uploader ── */
 [data-testid="stFileUploader"] {
     background: rgba(124,58,237,0.05) !important;
@@ -593,6 +613,62 @@ def compute_similarity(resume_text: str, jd_text: str) -> float:
     tfidf_matrix = vectorizer.fit_transform([resume_text, jd_text])
     score = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])[0][0]
     return round(float(score) * 100, 2)
+
+
+def analyze_resume_with_gemini(resume_text: str, jd_text: str, api_key: str) -> dict:
+    """
+    Analyzes the resume against the job description using Google's Gemini 2.5 Flash.
+    Returns a dict with score, matched_skills, missing_skills, reasoning, and experience_verdict.
+    """
+    if not HAS_GEMINI:
+        raise RuntimeError("google-generativeai package is not installed.")
+    
+    genai.configure(api_key=api_key)
+    
+    # We use gemini-2.5-flash which supports JSON mode and is extremely fast and cost-effective.
+    model = genai.GenerativeModel(
+        model_name="gemini-2.5-flash",
+        generation_config={"response_mime_type": "application/json"}
+    )
+    
+    prompt = f"""
+    You are an expert ATS (Applicant Tracking System) algorithm.
+    Analyze the following Resume against the Job Description.
+    
+    Compare their skills, experiences, tools, and overall alignment.
+    Provide a professional, objective matching report in JSON format with the following keys:
+    
+    - "score": An integer between 0 and 100 representing the semantic match and overall alignment.
+    - "matched_skills": A list of skills, programming languages, libraries, frameworks, or tools present in both the resume and the job description.
+    - "missing_skills": A list of key skills, frameworks, or tools explicitly requested in the job description but not found or not clearly demonstrated in the resume.
+    - "reasoning": A concise, 2-3 sentence professional summary of why the candidate matches or doesn't match the role, highlighting key strengths and areas of alignment.
+    - "experience_verdict": A concise statement assessing their experience level, project history, or seniority alignment (e.g. "Candidate meets required 3+ years experience in backend development" or "Seniority gap: Candidate has junior-level project experience while the JD requires a Senior lead").
+    
+    Keep the skills list lowercase and clean.
+    
+    Resume:
+    {resume_text}
+    
+    Job Description:
+    {jd_text}
+    """
+    
+    try:
+        response = model.generate_content(prompt)
+        # Parse the JSON response
+        result = json.loads(response.text.strip())
+        
+        # Ensure all required keys exist and are of correct type
+        return {
+            "score": float(result.get("score", 0.0)),
+            "matched_skills": list(result.get("matched_skills", [])),
+            "missing_skills": list(result.get("missing_skills", [])),
+            "reasoning": str(result.get("reasoning", "")),
+            "experience_verdict": str(result.get("experience_verdict", ""))
+        }
+    except Exception as e:
+        # Re-raise with a cleaner message
+        raise RuntimeError(f"Error during Gemini analysis: {str(e)}")
 
 
 def extract_skills(text: str) -> list:
@@ -757,14 +833,18 @@ def file_preview_html(uploaded_file) -> str:
     </div>""")
 
 
+# ─── API KEY (loaded silently from secrets or environment) ────────────────────
+api_key = st.secrets.get("GEMINI_API_KEY", "") or os.environ.get("GEMINI_API_KEY", "")
+engine = "AI-Powered (Gemini)"
+
 # ─── HEADER ───────────────────────────────────────────────────────────────────
 st.markdown('<div class="hero-title">🧠 Talentry</div>', unsafe_allow_html=True)
 st.markdown('<div class="hero-sub">Instantly analyze how well a resume matches a job description</div>', unsafe_allow_html=True)
-st.markdown('<div class="badge-center"><span class="badge">⚡ Powered by NLP &amp; TF-IDF</span></div>', unsafe_allow_html=True)
 
 # ─── STATE ────────────────────────────────────────────────────────────────────
 if "analyzed" not in st.session_state:
     st.session_state.analyzed = False
+
 
 # ─── STEP INDICATOR ───────────────────────────────────────────────────────────
 # Determine step after widgets are rendered (use placeholders)
@@ -800,12 +880,13 @@ else:
 step_placeholder.markdown(step_indicator_html(current_step), unsafe_allow_html=True)
 
 # ─── ANALYZE BUTTON ───────────────────────────────────────────────────────────
-col_btn1, col_btn2, col_btn3 = st.columns([2, 3, 2])
-with col_btn2:
-    analyze = st.button(
-        "🔍 Analyze Match" if both_uploaded else "⬆️ Upload both files to Analyze",
-        disabled=not both_uploaded,
-    )
+st.markdown('<div class="btn-center-row"><div>', unsafe_allow_html=True)
+analyze = st.button(
+    "🔍 Analyze Match" if both_uploaded else "⬆️ Upload both files to Analyze",
+    disabled=not both_uploaded,
+    use_container_width=True,
+)
+st.markdown('</div></div>', unsafe_allow_html=True)
 
 # ─── RESULTS ──────────────────────────────────────────────────────────────────
 if analyze and both_uploaded:
@@ -813,25 +894,65 @@ if analyze and both_uploaded:
 
     with st.spinner("Extracting and analyzing text …"):
         progress = st.progress(0)
-        for pct in range(0, 60, 10):
+        for pct in range(0, 40, 10):
             time.sleep(0.05)
             progress.progress(pct / 100)
 
         resume_raw = extract_text(resume_file)
         jd_raw = extract_text(jd_file)
 
-        for pct in range(60, 90, 10):
+        for pct in range(40, 60, 10):
             time.sleep(0.05)
             progress.progress(pct / 100)
 
-        resume_clean = preprocess(resume_raw)
-        jd_clean = preprocess(jd_raw)
-        score = compute_similarity(resume_clean, jd_clean)
+        # Initialize analysis variables
+        score = 0.0
+        resume_skills = []
+        jd_skills = []
+        matched_skills = []
+        missing_skills = []
+        gemini_reasoning = ""
+        experience_verdict = ""
+        used_gemini = False
 
-        resume_skills = extract_skills(resume_raw)
-        jd_skills = extract_skills(jd_raw)
-        matched_skills = list(set(resume_skills) & set(jd_skills))
-        missing_skills = list(set(jd_skills) - set(resume_skills))
+        if engine == "AI-Powered (Gemini)":
+            if not api_key:
+                st.warning("⚠️ No Gemini API Key provided. Falling back to Standard TF-IDF Matching.")
+            else:
+                try:
+                    progress.progress(0.7)
+                    gemini_result = analyze_resume_with_gemini(resume_raw, jd_raw, api_key)
+                    score = gemini_result["score"]
+                    matched_skills = gemini_result["matched_skills"]
+                    missing_skills = gemini_result["missing_skills"]
+                    gemini_reasoning = gemini_result["reasoning"]
+                    experience_verdict = gemini_result["experience_verdict"]
+                    
+                    # Convert to lowercase to conform with category color matching
+                    matched_skills = [s.lower() for s in matched_skills]
+                    missing_skills = [s.lower() for s in missing_skills]
+                    
+                    # Fill visual structures
+                    resume_skills = matched_skills.copy()
+                    jd_skills = list(set(matched_skills) | set(missing_skills))
+                    used_gemini = True
+                except Exception as e:
+                    st.error(f"Gemini Analysis failed: {e}")
+                    st.warning("🔄 Falling back to Standard TF-IDF Matching.")
+
+        if not used_gemini:
+            for pct in range(60, 90, 10):
+                time.sleep(0.05)
+                progress.progress(pct / 100)
+            
+            resume_clean = preprocess(resume_raw)
+            jd_clean = preprocess(jd_raw)
+            score = compute_similarity(resume_clean, jd_clean)
+
+            resume_skills = extract_skills(resume_raw)
+            jd_skills = extract_skills(jd_raw)
+            matched_skills = list(set(resume_skills) & set(jd_skills))
+            missing_skills = list(set(jd_skills) - set(resume_skills))
 
         word_count = len(resume_raw.split())
         match_rank = "A+" if score >= 80 else "A" if score >= 70 else "B+" if score >= 60 else "B" if score >= 50 else "C+" if score >= 40 else "C"
@@ -846,15 +967,25 @@ if analyze and both_uploaded:
     if score >= 70:
         score_color, label = "#34d399", "Excellent Match"
         verdict_cls = "verdict-high"
-        verdict_text = "🎉 <strong>Excellent alignment!</strong> Your resume strongly matches this job description. You're in a great position to apply — personalise your cover letter to highlight your top matching skills."
+        default_verdict = "🎉 <strong>Excellent alignment!</strong> Your resume strongly matches this job description. You're in a great position to apply — personalise your cover letter to highlight your top matching skills."
     elif score >= 40:
         score_color, label = "#fbbf24", "Moderate Match"
         verdict_cls = "verdict-mid"
-        verdict_text = "⚠️ <strong>Moderate Match:</strong> Your resume partially aligns with this role. Consider adding more relevant keywords and skills from the job description to strengthen your application."
+        default_verdict = "⚠️ <strong>Moderate Match:</strong> Your resume partially aligns with this role. Consider adding more relevant keywords and skills from the job description to strengthen your application."
     else:
         score_color, label = "#f87171", "Low Match"
         verdict_cls = "verdict-low"
-        verdict_text = "❌ <strong>Low Match:</strong> Your resume doesn't closely match this job description. Significant tailoring is recommended — review the required skills and adjust your resume accordingly."
+        default_verdict = "❌ <strong>Low Match:</strong> Your resume doesn't closely match this job description. Significant tailoring is recommended — review the required skills and adjust your resume accordingly."
+
+    if used_gemini:
+        verdict_text = f"""
+        <strong>Verdict:</strong> {default_verdict}<br/><br/>
+        🧠 <strong>AI Assessment:</strong> {gemini_reasoning}<br/><br/>
+        💼 <strong>Experience Alignment:</strong> {experience_verdict}
+        """
+    else:
+        verdict_text = default_verdict
+
 
     # ── Donut + stats layout ──
     dc1, dc2, dc3 = st.columns([1, 2, 1])
