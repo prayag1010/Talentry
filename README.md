@@ -26,28 +26,34 @@ Tech Stack
 Installation & Setup
 
 1. Clone the Repository
-bash
-git clone https://github.com/your-username/ai-resume-screening-system.git
-cd ai-resume-screening-system
+```bash
+git clone https://github.com/prayag1010/Talentry.git
+cd Talentry
+```
 
 2. Create Virtual Environment
-bash
+```bash
 python -m venv venv
+```
 Activate:
 - Windows:
-bash
+```bash
 venv\Scripts\activate
+```
 - Mac/Linux:
-bash
+```bash
 source venv/bin/activate
+```
 
 3. Install Dependencies
-bash
+```bash
 pip install -r requirements.txt
+```
 
 4. Run the App
-bash
+```bash
 streamlit run app.py
+```
 
 How It Works
 1. Upload resumes  
