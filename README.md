@@ -22,7 +22,7 @@ Tech Stack
 - nltk / spacy  
 - PyPDF2 / python-docx  
 - Streamlit
--
+
 Installation & Setup
 
 1. Clone the Repository
